@@ -1,10 +1,12 @@
 # Github Action for Lua and LuaJIT
 
-### `leafo/gh-actions-lua`
+> This is a fork of [leafo/gh-actions-lua: GitHub action for Lua/LuaJIT](https://github.com/leafo/gh-actions-lua) migrated to use Node 20.
 
-[![Actions Status](https://github.com/leafo/gh-actions-lua/workflows/test/badge.svg)](https://github.com/leafo/gh-actions-lua/actions)
+## `joelvaneenwyk/gh-actions-lua`
 
-**Note**: You must use version 8 or greater as GitHub has
+[![Actions Status](https://github.com/joelvaneenwyk/gh-actions-lua/workflows/test/badge.svg)](https://github.com/joelvaneenwyk/gh-actions-lua/actions)
+
+**Note**: You must use version 10 or greater as GitHub has
 deprecated older versions of the actions core libraries.
 
 Builds and installs Lua into the `.lua/` directory in the working directory.
@@ -13,22 +15,21 @@ directly in workflows.
 
 Other Lua GitHub actions:
 
-* [`leafo/gh-actions-luarocks`](https://github.com/leafo/gh-actions-luarocks)
+* [`joelvaneenwyk/gh-actions-luarocks`](https://github.com/joelvaneenwyk/gh-actions-luarocks)
   * inputs: `luarocksVersion`
-
 
 ## Usage
 
 Install Lua: (Will typically default to the latest release, 5.4.4 as of this readme)
 
 ```yaml
-- uses: leafo/gh-actions-lua@v10
+- uses: joelvaneenwyk/gh-actions-lua@v10
 ```
 
 Install specific version of Lua:
 
 ```yaml
-- uses: leafo/gh-actions-lua@v10
+- uses: joelvaneenwyk/gh-actions-lua@v10
   with:
     luaVersion: "5.1.5"
 ```
@@ -36,7 +37,7 @@ Install specific version of Lua:
 Install specific version of LuaJIT:
 
 ```yaml
-- uses: leafo/gh-actions-lua@v10
+- uses: joelvaneenwyk/gh-actions-lua@v10
   with:
     luaVersion: "luajit-2.1.0-beta3"
 ```
@@ -47,7 +48,7 @@ include this line on non-Windows platforms, as the action will do nothing in tho
 
 ```yaml
 - uses: ilammy/msvc-dev-cmd@v1
-- uses: leafo/gh-actions-lua@v10
+- uses: joelvaneenwyk/gh-actions-lua@v10
 ```
 
 ## Inputs
@@ -71,11 +72,11 @@ Examples of versions:
 
 The version specifies where the source is downloaded from:
 
-* `luajit-openresty` — will allways pull master from  https://github.com/openresty/luajit2
-* Anything starting with `luajit-` — from http://luajit.org/download.html
-* Anything else — from https://www.lua.org/ftp/
+* `luajit-openresty` — will always pull master from  <https://github.com/openresty/luajit2>
+* Anything starting with `luajit-` — from <http://luajit.org/download.html>
+* Anything else — from <https://www.lua.org/ftp/>
 
-**Version aliases**
+#### Version Aliases
 
 You can use shorthand `5.1`, `5.2`, `5.3`, `5.4`, `luajit` version aliases to point to the
 latest (or recent) version of Lua for that version.
@@ -89,7 +90,7 @@ Additional flags to pass to `make` when building Lua.
 Example value:
 
 ```yaml
-- uses: leafo/gh-actions-lua@master
+- uses: joelvaneenwyk/gh-actions-lua@master
   with:
     luaVersion: 5.3
     luaCompileFlags: LUA_CFLAGS="-DLUA_INT_TYPE=LUA_INT_INT"
@@ -116,11 +117,11 @@ jobs:
     steps:
     - uses: actions/checkout@master
 
-    - uses: leafo/gh-actions-lua@v10
+    - uses: joelvaneenwyk/gh-actions-lua@v10
       with:
         luaVersion: "5.1.5"
 
-    - uses: leafo/gh-actions-luarocks@v4
+    - uses: joelvaneenwyk/gh-actions-luarocks@v4
 
     - name: build
       run: |
@@ -134,9 +135,8 @@ jobs:
 
 This example:
 
-* Uses Lua 5.1.5 — You can use another version by chaning the `luaVersion` varible. LuaJIT versions can be used by prefixing the version with `luajit-`, i.e. `luajit-2.1.0-beta3`
+* Uses Lua 5.1.5 — You can use another version by chaining the `luaVersion` variable. LuaJIT versions can be used by prefixing the version with `luajit-`, i.e. `luajit-2.1.0-beta3`
 * Uses a `.rockspec` file the root directory of your repository to install dependencies and test packaging the module via `luarocks make`
-
 
 View the documentation for the individual actions (linked above) to learn more about how they work.
 
@@ -153,7 +153,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@master
-    - uses: leafo/gh-actions-lua@v10
+    - uses: joelvaneenwyk/gh-actions-lua@v10
       with:
         luaVersion: ${{ matrix.luaVersion }}
 
