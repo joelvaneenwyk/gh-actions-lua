@@ -4,6 +4,7 @@
   "description": "Build and install Lua",
   "main": "main.js",
   "scripts": {
+    "build": "ncc build main.js -o dist",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "leaf corcoran <leafot@gmail.com>",
@@ -14,5 +15,8 @@
     "@actions/exec": "^1.1.1",
     "@actions/io": "^1.1.3",
     "@actions/tool-cache": "^2.0.1"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.38.1"
   }
 }
