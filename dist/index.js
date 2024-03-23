@@ -42350,6 +42350,277 @@ function regExpEscape (s) {
 
 /***/ }),
 
+/***/ 1916:
+/***/ ((module) => {
+
+"use strict";
+
+
+function hasKey(obj, keys) {
+	var o = obj;
+	keys.slice(0, -1).forEach(function (key) {
+		o = o[key] || {};
+	});
+
+	var key = keys[keys.length - 1];
+	return key in o;
+}
+
+function isNumber(x) {
+	if (typeof x === 'number') { return true; }
+	if ((/^0x[0-9a-f]+$/i).test(x)) { return true; }
+	return (/^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(e[-+]?\d+)?$/).test(x);
+}
+
+function isConstructorOrProto(obj, key) {
+	return (key === 'constructor' && typeof obj[key] === 'function') || key === '__proto__';
+}
+
+module.exports = function (args, opts) {
+	if (!opts) { opts = {}; }
+
+	var flags = {
+		bools: {},
+		strings: {},
+		unknownFn: null,
+	};
+
+	if (typeof opts.unknown === 'function') {
+		flags.unknownFn = opts.unknown;
+	}
+
+	if (typeof opts.boolean === 'boolean' && opts.boolean) {
+		flags.allBools = true;
+	} else {
+		[].concat(opts.boolean).filter(Boolean).forEach(function (key) {
+			flags.bools[key] = true;
+		});
+	}
+
+	var aliases = {};
+
+	function aliasIsBoolean(key) {
+		return aliases[key].some(function (x) {
+			return flags.bools[x];
+		});
+	}
+
+	Object.keys(opts.alias || {}).forEach(function (key) {
+		aliases[key] = [].concat(opts.alias[key]);
+		aliases[key].forEach(function (x) {
+			aliases[x] = [key].concat(aliases[key].filter(function (y) {
+				return x !== y;
+			}));
+		});
+	});
+
+	[].concat(opts.string).filter(Boolean).forEach(function (key) {
+		flags.strings[key] = true;
+		if (aliases[key]) {
+			[].concat(aliases[key]).forEach(function (k) {
+				flags.strings[k] = true;
+			});
+		}
+	});
+
+	var defaults = opts.default || {};
+
+	var argv = { _: [] };
+
+	function argDefined(key, arg) {
+		return (flags.allBools && (/^--[^=]+$/).test(arg))
+			|| flags.strings[key]
+			|| flags.bools[key]
+			|| aliases[key];
+	}
+
+	function setKey(obj, keys, value) {
+		var o = obj;
+		for (var i = 0; i < keys.length - 1; i++) {
+			var key = keys[i];
+			if (isConstructorOrProto(o, key)) { return; }
+			if (o[key] === undefined) { o[key] = {}; }
+			if (
+				o[key] === Object.prototype
+				|| o[key] === Number.prototype
+				|| o[key] === String.prototype
+			) {
+				o[key] = {};
+			}
+			if (o[key] === Array.prototype) { o[key] = []; }
+			o = o[key];
+		}
+
+		var lastKey = keys[keys.length - 1];
+		if (isConstructorOrProto(o, lastKey)) { return; }
+		if (
+			o === Object.prototype
+			|| o === Number.prototype
+			|| o === String.prototype
+		) {
+			o = {};
+		}
+		if (o === Array.prototype) { o = []; }
+		if (o[lastKey] === undefined || flags.bools[lastKey] || typeof o[lastKey] === 'boolean') {
+			o[lastKey] = value;
+		} else if (Array.isArray(o[lastKey])) {
+			o[lastKey].push(value);
+		} else {
+			o[lastKey] = [o[lastKey], value];
+		}
+	}
+
+	function setArg(key, val, arg) {
+		if (arg && flags.unknownFn && !argDefined(key, arg)) {
+			if (flags.unknownFn(arg) === false) { return; }
+		}
+
+		var value = !flags.strings[key] && isNumber(val)
+			? Number(val)
+			: val;
+		setKey(argv, key.split('.'), value);
+
+		(aliases[key] || []).forEach(function (x) {
+			setKey(argv, x.split('.'), value);
+		});
+	}
+
+	Object.keys(flags.bools).forEach(function (key) {
+		setArg(key, defaults[key] === undefined ? false : defaults[key]);
+	});
+
+	var notFlags = [];
+
+	if (args.indexOf('--') !== -1) {
+		notFlags = args.slice(args.indexOf('--') + 1);
+		args = args.slice(0, args.indexOf('--'));
+	}
+
+	for (var i = 0; i < args.length; i++) {
+		var arg = args[i];
+		var key;
+		var next;
+
+		if ((/^--.+=/).test(arg)) {
+			// Using [\s\S] instead of . because js doesn't support the
+			// 'dotall' regex modifier. See:
+			// http://stackoverflow.com/a/1068308/13216
+			var m = arg.match(/^--([^=]+)=([\s\S]*)$/);
+			key = m[1];
+			var value = m[2];
+			if (flags.bools[key]) {
+				value = value !== 'false';
+			}
+			setArg(key, value, arg);
+		} else if ((/^--no-.+/).test(arg)) {
+			key = arg.match(/^--no-(.+)/)[1];
+			setArg(key, false, arg);
+		} else if ((/^--.+/).test(arg)) {
+			key = arg.match(/^--(.+)/)[1];
+			next = args[i + 1];
+			if (
+				next !== undefined
+				&& !(/^(-|--)[^-]/).test(next)
+				&& !flags.bools[key]
+				&& !flags.allBools
+				&& (aliases[key] ? !aliasIsBoolean(key) : true)
+			) {
+				setArg(key, next, arg);
+				i += 1;
+			} else if ((/^(true|false)$/).test(next)) {
+				setArg(key, next === 'true', arg);
+				i += 1;
+			} else {
+				setArg(key, flags.strings[key] ? '' : true, arg);
+			}
+		} else if ((/^-[^-]+/).test(arg)) {
+			var letters = arg.slice(1, -1).split('');
+
+			var broken = false;
+			for (var j = 0; j < letters.length; j++) {
+				next = arg.slice(j + 2);
+
+				if (next === '-') {
+					setArg(letters[j], next, arg);
+					continue;
+				}
+
+				if ((/[A-Za-z]/).test(letters[j]) && next[0] === '=') {
+					setArg(letters[j], next.slice(1), arg);
+					broken = true;
+					break;
+				}
+
+				if (
+					(/[A-Za-z]/).test(letters[j])
+					&& (/-?\d+(\.\d*)?(e-?\d+)?$/).test(next)
+				) {
+					setArg(letters[j], next, arg);
+					broken = true;
+					break;
+				}
+
+				if (letters[j + 1] && letters[j + 1].match(/\W/)) {
+					setArg(letters[j], arg.slice(j + 2), arg);
+					broken = true;
+					break;
+				} else {
+					setArg(letters[j], flags.strings[letters[j]] ? '' : true, arg);
+				}
+			}
+
+			key = arg.slice(-1)[0];
+			if (!broken && key !== '-') {
+				if (
+					args[i + 1]
+					&& !(/^(-|--)[^-]/).test(args[i + 1])
+					&& !flags.bools[key]
+					&& (aliases[key] ? !aliasIsBoolean(key) : true)
+				) {
+					setArg(key, args[i + 1], arg);
+					i += 1;
+				} else if (args[i + 1] && (/^(true|false)$/).test(args[i + 1])) {
+					setArg(key, args[i + 1] === 'true', arg);
+					i += 1;
+				} else {
+					setArg(key, flags.strings[key] ? '' : true, arg);
+				}
+			}
+		} else {
+			if (!flags.unknownFn || flags.unknownFn(arg) !== false) {
+				argv._.push(flags.strings._ || !isNumber(arg) ? arg : Number(arg));
+			}
+			if (opts.stopEarly) {
+				argv._.push.apply(argv._, args.slice(i + 1));
+				break;
+			}
+		}
+	}
+
+	Object.keys(defaults).forEach(function (k) {
+		if (!hasKey(argv, k.split('.'))) {
+			setKey(argv, k.split('.'), defaults[k]);
+
+			(aliases[k] || []).forEach(function (x) {
+				setKey(argv, x.split('.'), defaults[k]);
+			});
+		}
+	});
+
+	if (opts['--']) {
+		argv['--'] = notFlags.slice();
+	} else {
+		notFlags.forEach(function (k) {
+			argv._.push(k);
+		});
+	}
+
+	return argv;
+};
+
+
+/***/ }),
+
 /***/ 3215:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
@@ -83415,21 +83686,20 @@ module.exports = JSON.parse('[[[0,44],"disallowed_STD3_valid"],[[45,46],"valid"]
 var __webpack_exports__ = {};
 // This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
 (() => {
+const core = __nccwpck_require__(5692);
+const exec = __nccwpck_require__(6438);
+const io = __nccwpck_require__(2290);
+const tc = __nccwpck_require__(748);
+const ch = __nccwpck_require__(377);
+const fsp = (__nccwpck_require__(7147).promises);
 
-const core = __nccwpck_require__(5692)
-const exec = __nccwpck_require__(6438)
-const io = __nccwpck_require__(2290)
-const tc = __nccwpck_require__(748)
-const ch = __nccwpck_require__(377)
-const fsp = (__nccwpck_require__(7147).promises)
+const notice = (msg) => core.notice(`gh-actions-lua: ${msg}`);
+const warning = (msg) => core.warning(`gh-actions-lua: ${msg}`);
 
-const notice = (msg) => core.notice(`gh-actions-lua: ${msg}`)
-const warning = (msg) => core.warning(`gh-actions-lua: ${msg}`)
+const path = __nccwpck_require__(1017);
 
-const path = __nccwpck_require__(1017)
-
-const BUILD_PREFIX = ".lua-build" // this is a temporary folder where lua will be built
-const LUA_PREFIX = ".lua" // this is where Lua will be installed
+const BUILD_PREFIX = ".lua-build"; // this is a temporary folder where lua will be built
+const LUA_PREFIX = ".lua"; // this is where Lua will be installed
 
 const VERSION_ALIASES = {
   "5.1": "5.1.5",
@@ -83437,264 +83707,279 @@ const VERSION_ALIASES = {
   "5.3": "5.3.6",
   "5.4": "5.4.4",
   "luajit": "luajit-2.1.0-beta3",
-}
+};
 
-const isMacOS = () => (process.platform || "").startsWith("darwin")
-const isWindows = () => (process.platform || "").startsWith("win32")
+const isMacOS = () => (process.platform || "").startsWith("darwin");
+const isWindows = () => (process.platform || "").startsWith("win32");
 
-const exists = (filename, mode) => fsp.access(filename, mode).then(() => true, () => false)
+const exists = (filename, mode) => fsp.access(filename, mode).then(() => true, () => false);
 
 // Returns posix path for path.join()
-const pathJoin = path.posix.join
+const pathJoin = path.posix.join;
 
 // Returns posix path for process.cwd()
 const processCwd = () => {
   return process.cwd().split(path.sep).join(path.posix.sep);
-}
+};
 
 async function finish_luajit_install(src, dst, luajit) {
   if (isWindows()) {
-    await fsp.copyFile(pathJoin(src, "lua51.dll"), pathJoin(dst, "bin", "lua51.dll"))
+    await fsp.copyFile(pathJoin(src, "lua51.dll"), pathJoin(dst, "bin", "lua51.dll"));
 
     await exec.exec(`ln -s ${luajit} lua.exe`, undefined, {
       cwd: pathJoin(dst, "bin")
-    })
+    });
   } else {
     await exec.exec(`ln -s ${luajit} lua`, undefined, {
       cwd: pathJoin(dst, "bin")
-    })
+    });
   }
 }
 
 async function install_luajit_openresty(luaInstallPath) {
-  const buildPath = path.join(process.env["RUNNER_TEMP"], BUILD_PREFIX)
-  const luaCompileFlags = core.getInput('luaCompileFlags')
+  const buildPath = path.join(process.env["RUNNER_TEMP"], BUILD_PREFIX);
+  const luaCompileFlags = core.getInput('luaCompileFlags');
 
-  await io.mkdirP(buildPath)
+  await io.mkdirP(buildPath);
 
   await exec.exec("git clone https://github.com/openresty/luajit2.git", undefined, {
     cwd: buildPath
-  })
+  });
 
-  let finalCompileFlags = "-j"
+  let finalCompileFlags = "-j";
 
   if (isMacOS()) {
-    finalCompileFlags += " MACOSX_DEPLOYMENT_TARGET=10.15"
+    finalCompileFlags += " MACOSX_DEPLOYMENT_TARGET=10.15";
   }
 
   if (luaCompileFlags) {
-    finalCompileFlags += ` ${luaCompileFlags}`
+    finalCompileFlags += ` ${luaCompileFlags}`;
   }
 
   await exec.exec(`make ${finalCompileFlags}`, undefined, {
     cwd: pathJoin(buildPath, "luajit2"),
-    ...(isWindows() ? { env: { SHELL: 'cmd' }} : {})
-  })
+    ...(isWindows() ? { env: { SHELL: 'cmd' } } : {})
+  });
 
   await exec.exec(`make -j install PREFIX="${luaInstallPath}"`, undefined, {
     cwd: pathJoin(buildPath, "luajit2")
-  })
+  });
 
-  await finish_luajit_install(pathJoin(buildPath, "luajit2", "src"), luaInstallPath, "luajit")
+  await finish_luajit_install(pathJoin(buildPath, "luajit2", "src"), luaInstallPath, "luajit");
 }
 
 async function install_luajit(luaInstallPath, luajitVersion) {
-  const luaExtractPath = pathJoin(process.env["RUNNER_TEMP"], BUILD_PREFIX, `LuaJIT-${luajitVersion}`)
+  const luaExtractPath = pathJoin(process.env["RUNNER_TEMP"], BUILD_PREFIX, `LuaJIT-${luajitVersion}`);
 
-  const luaCompileFlags = core.getInput('luaCompileFlags')
+  const luaCompileFlags = core.getInput('luaCompileFlags');
 
-  const luaSourceTar = await tc.downloadTool(`https://luajit.org/download/LuaJIT-${luajitVersion}.tar.gz`)
-  await io.mkdirP(luaExtractPath)
-  await tc.extractTar(luaSourceTar, path.join(process.env["RUNNER_TEMP"], BUILD_PREFIX))
+  const luaSourceTar = await tc.downloadTool(`https://luajit.org/download/LuaJIT-${luajitVersion}.tar.gz`);
+  await io.mkdirP(luaExtractPath);
+  await tc.extractTar(luaSourceTar, path.join(process.env["RUNNER_TEMP"], BUILD_PREFIX));
 
-  let finalCompileFlags = "-j"
+  let finalCompileFlags = "-j";
 
   if (isMacOS()) {
-    finalCompileFlags += " MACOSX_DEPLOYMENT_TARGET=10.15"
+    finalCompileFlags += " MACOSX_DEPLOYMENT_TARGET=10.15";
   }
 
   if (luaCompileFlags) {
-    finalCompileFlags += ` ${luaCompileFlags}`
+    finalCompileFlags += ` ${luaCompileFlags}`;
   }
 
   await exec.exec(`make ${finalCompileFlags}`, undefined, {
     cwd: luaExtractPath
-  })
+  });
 
   await exec.exec(`make -j install PREFIX="${luaInstallPath}"`, undefined, {
     cwd: luaExtractPath
-  })
+  });
 
-  await finish_luajit_install(pathJoin(luaExtractPath, "src"), luaInstallPath, `luajit-${luajitVersion}`)
+  await finish_luajit_install(pathJoin(luaExtractPath, "src"), luaInstallPath, `luajit-${luajitVersion}`);
 }
 
 async function msvc_link(luaExtractPath, linkCmd, outFile, objs) {
   await exec.exec(linkCmd + " /out:" + outFile, objs, {
     cwd: luaExtractPath
-  })
+  });
 
-  let manifest = outFile + ".manifest"
+  let manifest = outFile + ".manifest";
   if (await exists(manifest)) {
     await exec.exec("mt /nologo", ["-manifest", manifest, "-outputresource:" + outFile], {
       cwd: luaExtractPath
-    })
+    });
   }
 }
 
 async function install_files(dstDir, srcDir, files) {
-  await io.mkdirP(dstDir)
+  await io.mkdirP(dstDir);
   for (let file of files) {
-    await fsp.copyFile(pathJoin(srcDir, file), pathJoin(dstDir, path.posix.basename(file)))
+    await fsp.copyFile(pathJoin(srcDir, file), pathJoin(dstDir, path.posix.basename(file)));
   }
 }
 
 async function install_plain_lua_windows(luaExtractPath, luaInstallPath, luaVersion) {
-  const luaCompileFlags = core.getInput('luaCompileFlags')
+  const luaCompileFlags = core.getInput('luaCompileFlags');
 
-  let cl = "cl /nologo /MD /O2 /W3 /c /D_CRT_SECURE_NO_DEPRECATE"
+  let cl = "cl /nologo /MD /O2 /W3 /c /D_CRT_SECURE_NO_DEPRECATE";
 
   let objs = {
     "lib": [],
     "lua": [],
     "luac": [],
-  }
+  };
 
   let sources = {
-    "lua": [ "lua.c" ],
-    "luac": [ "luac.c", "print.c" ],
-  }
+    "lua": ["lua.c"],
+    "luac": ["luac.c", "print.c"],
+  };
 
-  let src = pathJoin(luaExtractPath, "src")
+  let src = pathJoin(luaExtractPath, "src");
 
   await fsp.readdir(src).then(async (files) => {
     for (let file of files) {
       if (file.endsWith(".c")) {
         let mode = sources["lua"].includes(file)
-                 ? "lua"
-                 : sources["luac"].includes(file)
-                 ? "luac"
-                 : "lib"
+          ? "lua"
+          : sources["luac"].includes(file)
+            ? "luac"
+            : "lib";
 
-        let srcName = pathJoin("src", file)
+        let srcName = pathJoin("src", file);
 
         let args = (mode === "lib")
-                 ? [ "-DLUA_BUILD_AS_DLL", srcName ]
-                 : [ srcName ]
+          ? ["-DLUA_BUILD_AS_DLL", srcName]
+          : [srcName];
 
-        objs[mode].push(file.replace(".c", ".obj"))
+        objs[mode].push(file.replace(".c", ".obj"));
 
         await exec.exec(cl, args, {
           cwd: luaExtractPath
-        })
+        });
       }
     }
-  })
+  });
 
-  objs["lua"] = [ ...objs["lua"], ...objs["lib"] ]
-  objs["luac"] = [ ...objs["luac"], ...objs["lib"] ]
+  objs["lua"] = [...objs["lua"], ...objs["lib"]];
+  objs["luac"] = [...objs["luac"], ...objs["lib"]];
 
-  let luaXYZ = luaVersion.split(".")
-  let libFile = "lua" + luaXYZ[0] + luaXYZ[1] + ".lib"
-  let dllFile = "lua" + luaXYZ[0] + luaXYZ[1] + ".dll"
+  let luaXYZ = luaVersion.split(".");
+  let libFile = "lua" + luaXYZ[0] + luaXYZ[1] + ".lib";
+  let dllFile = "lua" + luaXYZ[0] + luaXYZ[1] + ".dll";
 
   await msvc_link(luaExtractPath, "link /nologo /DLL", dllFile, objs["lib"]);
   await msvc_link(luaExtractPath, "link /nologo", "luac.exe", objs["luac"]);
   await msvc_link(luaExtractPath, "link /nologo", "lua.exe", objs["lua"]);
 
-  const luaHpp = (await exists(pathJoin(src, "lua.hpp"))) ? "lua.hpp" : "../etc/lua.hpp"
-  const headers = [ "lua.h", "luaconf.h", "lualib.h", "lauxlib.h", luaHpp ]
+  const luaHpp = (await exists(pathJoin(src, "lua.hpp"))) ? "lua.hpp" : "../etc/lua.hpp";
+  const headers = ["lua.h", "luaconf.h", "lualib.h", "lauxlib.h", luaHpp];
 
-  await install_files(pathJoin(luaInstallPath, "bin"), luaExtractPath, [ "lua.exe", "luac.exe" ])
-  await install_files(pathJoin(luaInstallPath, "lib"), luaExtractPath, [ dllFile, libFile ])
-  await install_files(pathJoin(luaInstallPath, "include"), src, headers)
+  await install_files(pathJoin(luaInstallPath, "bin"), luaExtractPath, ["lua.exe", "luac.exe"]);
+  await install_files(pathJoin(luaInstallPath, "lib"), luaExtractPath, [dllFile, libFile]);
+  await install_files(pathJoin(luaInstallPath, "include"), src, headers);
 }
 
 async function install_plain_lua(luaInstallPath, luaVersion) {
-  const luaExtractPath = pathJoin(process.env["RUNNER_TEMP"], BUILD_PREFIX, `lua-${luaVersion}`)
-  const luaCompileFlags = core.getInput('luaCompileFlags')
+  const luaExtractPath = pathJoin(process.env["RUNNER_TEMP"], BUILD_PREFIX, `lua-${luaVersion}`);
+  const luaCompileFlags = core.getInput('luaCompileFlags');
 
-  const luaSourceTar = await tc.downloadTool(`https://lua.org/ftp/lua-${luaVersion}.tar.gz`)
-  await io.mkdirP(luaExtractPath)
-  await tc.extractTar(luaSourceTar, path.join(process.env["RUNNER_TEMP"], BUILD_PREFIX))
+  const luaSourceTar = await tc.downloadTool(`https://lua.org/ftp/lua-${luaVersion}.tar.gz`);
+  await io.mkdirP(luaExtractPath);
+  await tc.extractTar(luaSourceTar, path.join(process.env["RUNNER_TEMP"], BUILD_PREFIX));
 
   if (isWindows()) {
     return await install_plain_lua_windows(luaExtractPath, luaInstallPath, luaVersion);
   }
 
   if (isMacOS()) {
-    await exec.exec("brew install readline ncurses")
+    await exec.exec("brew install readline ncurses");
   } else {
     await exec.exec("sudo apt-get install -q libreadline-dev libncurses-dev", undefined, {
       env: {
         DEBIAN_FRONTEND: "noninteractive",
         TERM: "linux"
       }
-    })
+    });
   }
 
-  let finalCompileFlags = `-j ${isMacOS() ? "macosx" : "linux"}`
+  let finalCompileFlags = `-j ${isMacOS() ? "macosx" : "linux"}`;
 
   if (luaCompileFlags) {
-    finalCompileFlags += ` ${luaCompileFlags}`
+    finalCompileFlags += ` ${luaCompileFlags}`;
   }
 
   await exec.exec(`make ${finalCompileFlags}`, undefined, {
     cwd: luaExtractPath
-  })
+  });
 
   await exec.exec(`make -j INSTALL_TOP="${luaInstallPath}" install`, undefined, {
     cwd: luaExtractPath
-  })
+  });
 }
 
 async function install(luaInstallPath, luaVersion) {
   if (luaVersion == "luajit-openresty") {
-    return await install_luajit_openresty(luaInstallPath)
+    return await install_luajit_openresty(luaInstallPath);
   }
 
   if (luaVersion.startsWith("luajit-")) {
-    const luajitVersion = luaVersion.substr("luajit-".length)
-    return await install_luajit(luaInstallPath, luajitVersion)
+    const luajitVersion = luaVersion.substr("luajit-".length);
+    return await install_luajit(luaInstallPath, luajitVersion);
   }
 
-  return await install_plain_lua(luaInstallPath, luaVersion)
+  return await install_plain_lua(luaInstallPath, luaVersion);
 }
 
-const makeCacheKey = (luaVersion, compileFlags) => `lua:${luaVersion}:${process.platform}:${process.arch}:${compileFlags}`
+const makeCacheKey = (luaVersion, compileFlags) => `lua:${luaVersion}:${process.platform}:${process.arch}:${compileFlags}`;
 
 async function main() {
-  let luaVersion = core.getInput('luaVersion', { required: true })
-
-  if (VERSION_ALIASES[luaVersion]) {
-    luaVersion = VERSION_ALIASES[luaVersion]
+  var argv = __nccwpck_require__(1916)(process.argv.slice(2));
+  for (let key in argv) {
+    if (!key.startsWith('_')) {
+      const name = `INPUT_${key.replace(/ /g, '_').toUpperCase()}`;
+      const value = argv[key];
+      process.env[name] = value;
+      core.exportVariable(name, value);
+    }
   }
 
-  const luaInstallPath = pathJoin(processCwd(), LUA_PREFIX)
+  process.env["RUNNER_TOOL_CACHE"] = `${__dirname}/cache`;
+  process.env["RUNNER_TEMP"] = __nccwpck_require__.ab + ".tmp";
 
-  let toolCacheDir = tc.find('lua', luaVersion)
+  console.log(argv);
+
+  let luaVersion = core.getInput('luaVersion', { required: true });
+
+  if (VERSION_ALIASES[luaVersion]) {
+    luaVersion = VERSION_ALIASES[luaVersion];
+  }
+
+  const luaInstallPath = pathJoin(processCwd(), LUA_PREFIX);
+
+  let toolCacheDir = tc.find('lua', luaVersion);
 
   if (!toolCacheDir) {
-    const cacheKey = makeCacheKey(luaVersion, core.getInput('luaCompileFlags') || "")
+    const cacheKey = makeCacheKey(luaVersion, core.getInput('luaCompileFlags') || "");
     if (core.getInput('buildCache') == 'true') {
-      const restoredCache = await ch.restoreCache([luaInstallPath], cacheKey)
+      const restoredCache = await ch.restoreCache([luaInstallPath], cacheKey);
       if (restoredCache) {
-        notice(`Cache restored: ${restoredCache}`)
+        notice(`Cache restored: ${restoredCache}`);
       } else {
-        notice(`No cache available, clean build`)
+        notice(`No cache available, clean build`);
       }
     }
 
     if (!(await exists(luaInstallPath))) {
-      await install(luaInstallPath, luaVersion)
+      await install(luaInstallPath, luaVersion);
       try {
-        notice(`Storing into cache: ${cacheKey}`)
-        await ch.saveCache([luaInstallPath], cacheKey)
+        notice(`Storing into cache: ${cacheKey}`);
+        await ch.saveCache([luaInstallPath], cacheKey);
       } catch (e) {
-        warning(`Failed to save to cache (continuing anyway): ${e}`)
+        warning(`Failed to save to cache (continuing anyway): ${e}`);
       }
     }
 
-    toolCacheDir = await tc.cacheDir(luaInstallPath, 'lua', luaVersion)
+    toolCacheDir = await tc.cacheDir(luaInstallPath, 'lua', luaVersion);
   }
 
   // If .lua doesn't exist, symlink it to the tool cache dir
@@ -83702,7 +83987,7 @@ async function main() {
     await fsp.symlink(toolCacheDir, luaInstallPath);
   }
 
-  core.addPath(pathJoin(luaInstallPath, "bin"))
+  core.addPath(pathJoin(luaInstallPath, "bin"));
 }
 
 main().catch(err => {

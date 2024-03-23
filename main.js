@@ -245,6 +245,21 @@ async function install(luaInstallPath, luaVersion) {
 const makeCacheKey = (luaVersion, compileFlags) => `lua:${luaVersion}:${process.platform}:${process.arch}:${compileFlags}`;
 
 async function main() {
+  var argv = require('minimist')(process.argv.slice(2));
+  for (let key in argv) {
+    if (!key.startsWith('_')) {
+      const name = `INPUT_${key.replace(/ /g, '_').toUpperCase()}`;
+      const value = argv[key];
+      process.env[name] = value;
+      core.exportVariable(name, value);
+    }
+  }
+
+  process.env["RUNNER_TOOL_CACHE"] = `${__dirname}/cache`;
+  process.env["RUNNER_TEMP"] = `${__dirname}/.tmp`;
+
+  console.log(argv);
+
   let luaVersion = core.getInput('luaVersion', { required: true });
 
   if (VERSION_ALIASES[luaVersion]) {

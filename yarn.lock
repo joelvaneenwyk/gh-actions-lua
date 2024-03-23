@@ -703,6 +703,7 @@ __metadata:
     "@actions/io": "npm:^1.1.3"
     "@actions/tool-cache": "npm:^2.0.1"
     "@vercel/ncc": "npm:^0.38.1"
+    minimist: "npm:^1.2.8"
   languageName: unknown
   linkType: soft
 
@@ -830,6 +831,13 @@ __metadata:
   dependencies:
     brace-expansion: "npm:^2.0.1"
   checksum: 85f407dcd38ac3e180f425e86553911d101455ca3ad5544d6a7cec16286657e4f8a9aa6695803025c55e31e35a91a2252b5dc8e7d527211278b8b65b4dbd5eac
+  languageName: node
+  linkType: hard
+
+"minimist@npm:^1.2.8":
+  version: 1.2.8
+  resolution: "minimist@npm:1.2.8"
+  checksum: 19d3fcdca050087b84c2029841a093691a91259a47def2f18222f41e7645a0b7c44ef4b40e88a1e58a40c84d2ef0ee6047c55594d298146d0eb3f6b737c20ce6
   languageName: node
   linkType: hard
 
