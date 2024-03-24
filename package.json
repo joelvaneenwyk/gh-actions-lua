@@ -5,7 +5,8 @@
   "main": "main.js",
   "scripts": {
     "clean": "git clean -xfd --no-interactive && yarn install",
-    "build": "ncc build main.js -o dist",
+    "build": "ncc build main.js --target es2015 --license license.txt --no-cache --source-map --stats-out dist/stats.json --minify -o dist",
+    "dev": "ncc build main.js --target es2015 --license license.txt --source-map --stats-out dist/stats.json -o dist",
     "test": "yarn build && node dist/index.js --luaVersion \"5.1.5\"",
     "start:debug": "node --inspect-brk=5858 ./main.js --luaVersion \"5.1.5\""
   },
