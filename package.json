@@ -6,7 +6,7 @@
   "scripts": {
     "clean": "git clean -xfd --no-interactive && yarn install",
     "build": "ncc build main.js -o dist",
-    "test": "yarn build && yarn node dist/index.js --luaVersion \"5.1.5\"",
+    "test": "yarn build && node dist/index.js --luaVersion \"5.1.5\"",
     "start:debug": "node --inspect-brk=5858 ./main.js --luaVersion \"5.1.5\""
   },
   "author": "leaf corcoran <leafot@gmail.com>",
