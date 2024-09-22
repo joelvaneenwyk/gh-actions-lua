@@ -1,0 +1,11 @@
+version: "0.2"
+ignorePaths: []
+dictionaryDefinitions:
+  - name: gh-actions-lua
+    path: ./.github/config/gh-actions-lua.dict
+    addWords: true
+dictionaries:
+  - gh-actions-lua
+words: []
+ignoreWords: []
+import: []
