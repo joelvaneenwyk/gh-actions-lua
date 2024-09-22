@@ -245,15 +245,41 @@ async function install(luaInstallPath, luaVersion) {
 const makeCacheKey = (luaVersion, compileFlags) => `lua:${luaVersion}:${process.platform}:${process.arch}:${compileFlags}`;
 
 async function main() {
-  let luaVersion = core.getInput('luaVersion', { required: true });
+  let luaVersion = null;
+  try {
+    luaVersion = core.getInput('luaVersion', { required: true });
+  } catch (e) {
+    try {
+      process.argv.forEach(function (val, _index, _array) {
+        if (!luaVersion && val && !val.startsWith("-") && !val.contains("/") && !val.contains("\\") && !val.contains(" ")) {
+          luaVersion = val;
+          notice(`Using Lua version from command line: ${luaVersion}`);
+        }
+      });
+    } catch (ee) {
+    }
+  }
+  luaVersion = luaVersion || "5.1";
 
   if (VERSION_ALIASES[luaVersion]) {
     luaVersion = VERSION_ALIASES[luaVersion];
   }
 
-  const luaInstallPath = pathJoin(processCwd(), LUA_PREFIX);
+  let runnerTemp = null;
+  if ("RUNNER_TEMP" in process.env) {
+    runnerTemp = process.env["RUNNER_TEMP"];
+  } else {
+    runnerTemp = processCwd();
+  }
+  process.env["RUNNER_TEMP"] = runnerTemp;
+  const luaInstallPath = pathJoin(runnerTemp, LUA_PREFIX);
 
-  let toolCacheDir = tc.find('lua', luaVersion);
+  let toolCacheDir = null;
+  try {
+    toolCacheDir = tc.find('lua', luaVersion);
+  } catch (e) {
+    warning(`Failed to find Lua in tool cache: ${e}`);
+  }
 
   if (!toolCacheDir) {
     const cacheKey = makeCacheKey(luaVersion, core.getInput('luaCompileFlags') || "");
@@ -290,4 +316,3 @@ async function main() {
 main().catch(err => {
   core.setFailed(`Failed to install Lua: ${err}`);
 })
-
