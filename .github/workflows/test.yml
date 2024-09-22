@@ -54,5 +54,5 @@ jobs:
         luaVersion: ${{ matrix.luaVersion }}
 
     - name: Test Lua
-      if: ! (matrix.machineTag == 'windows-latest' && matrix.luaVersion == 'luajit-openresty')
+      if: matrix.machineTag != 'windows-latest' && matrix.luaVersion != 'luajit-openresty'
       run: lua -e "print('hi from lua')"
