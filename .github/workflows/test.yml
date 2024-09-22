@@ -48,7 +48,7 @@ jobs:
     - uses: actions/checkout@main
 
     - name: Get Lua from cache
-      if: ! (matrix.machineTag == 'windows-latest' && matrix.luaVersion == 'luajit-openresty')
+      if: matrix.machineTag != 'windows-latest' && matrix.luaVersion != 'luajit-openresty'
       uses: './'
       with:
         luaVersion: ${{ matrix.luaVersion }}
