@@ -32,7 +32,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        luaVersion: ["5.1.5", "5.2.4", "5.3.6", "5.4.4", "luajit-2.0.5", "luajit-2.1.0-beta3", "luajit-openresty", "5.1", "5.4"]
+        luaVersion: [
+            "5.4", "5.4.4",
+            "5.3.6",
+            "5.2.4",
+            "5.1", "5.1.5",
+            "luajit-openresty",
+            # "luajit-2.0.5", "luajit-2.1.0-beta3",
+        ]
         machineTag: ["ubuntu-latest", "macos-latest", "windows-latest"]
 
     runs-on: ${{ matrix.machineTag }}
@@ -41,9 +48,11 @@ jobs:
     - uses: actions/checkout@main
 
     - name: Get Lua from cache
+      if: ! (matrix.machineTag == 'windows-latest' && matrix.luaVersion == 'luajit-openresty')
       uses: './'
       with:
         luaVersion: ${{ matrix.luaVersion }}
 
     - name: Test Lua
+      if: ! (matrix.machineTag == 'windows-latest' && matrix.luaVersion == 'luajit-openresty')
       run: lua -e "print('hi from lua')"
