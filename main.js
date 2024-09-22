@@ -245,6 +245,18 @@ async function install(luaInstallPath, luaVersion) {
 const makeCacheKey = (luaVersion, compileFlags) => `lua:${luaVersion}:${process.platform}:${process.arch}:${compileFlags}`;
 
 async function main() {
+  let runnerTemp = null;
+  if ("RUNNER_TEMP" in process.env) {
+    runnerTemp = process.env["RUNNER_TEMP"];
+  } else {
+    runnerTemp = processCwd();
+  }
+  process.env["RUNNER_TEMP"] = runnerTemp;
+
+  if (!("RUNNER_TOOL_CACHE" in process.env)) {
+    process.env["RUNNER_TOOL_CACHE"] = runnerTemp;
+  }
+
   let luaVersion = null;
   try {
     luaVersion = core.getInput('luaVersion', { required: true });
@@ -265,13 +277,6 @@ async function main() {
     luaVersion = VERSION_ALIASES[luaVersion];
   }
 
-  let runnerTemp = null;
-  if ("RUNNER_TEMP" in process.env) {
-    runnerTemp = process.env["RUNNER_TEMP"];
-  } else {
-    runnerTemp = processCwd();
-  }
-  process.env["RUNNER_TEMP"] = runnerTemp;
   const luaInstallPath = pathJoin(runnerTemp, LUA_PREFIX);
 
   let toolCacheDir = null;
