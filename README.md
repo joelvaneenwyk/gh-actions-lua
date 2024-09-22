@@ -13,8 +13,8 @@ directly in workflows.
 
 Other Lua GitHub actions:
 
-* [`joelvaneenwyk/gh-actions-luarocks`](https://github.com/joelvaneenwyk/gh-actions-luarocks)
-  * inputs: `luarocksVersion`
+- [`joelvaneenwyk/gh-actions-luarocks`](https://github.com/joelvaneenwyk/gh-actions-luarocks)
+  - inputs: `luarocksVersion`
 
 ## Usage
 
@@ -60,19 +60,19 @@ where to download the source from.
 
 Examples of versions:
 
-* `"5.1.5"`
-* `"5.2.4"`
-* `"5.3.5"`
-* `"5.4.1"`
-* `"luajit-2.0.5"`
-* `"luajit-2.1.0-beta3"`
-* `"luajit-openresty"`
+- `5.1.5`
+- `5.2.4`
+- `5.3.5`
+- `5.4.1`
+- `luajit-2.0.5`
+- `luajit-2.1.0-beta3`
+- `luajit-openresty`
 
 The version specifies where the source is downloaded from:
 
-* `luajit-openresty` — will allways pull master from  <https://github.com/openresty/luajit2>
-* Anything starting with `luajit-` — from <http://luajit.org/download.html>
-* Anything else — from <https://www.lua.org/ftp/>
+- `luajit-openresty` — will allways pull master from  <https://github.com/openresty/luajit2>
+- Anything starting with `luajit-` — from <http://luajit.org/download.html>
+- Anything else — from <https://www.lua.org/ftp/>
 
 ### Version aliases
 
@@ -133,8 +133,8 @@ jobs:
 
 This example:
 
-* Uses Lua 5.1.5 — You can use another version by chaning the `luaVersion` varible. LuaJIT versions can be used by prefixing the version with `luajit-`, i.e. `luajit-2.1.0-beta3`
-* Uses a `.rockspec` file the root directory of your repository to install dependencies and test packaging the module via `luarocks make`
+- Uses Lua 5.1.5 — You can use another version by chaning the `luaVersion` varible. LuaJIT versions can be used by prefixing the version with `luajit-`, i.e. `luajit-2.1.0-beta3`
+- Uses a `.rockspec` file the root directory of your repository to install dependencies and test packaging the module via `luarocks make`
 
 View the documentation for the individual actions (linked above) to learn more about how they work.
 
