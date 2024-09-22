@@ -74,7 +74,7 @@ The version specifies where the source is downloaded from:
 * Anything starting with `luajit-` — from <http://luajit.org/download.html>
 * Anything else — from <https://www.lua.org/ftp/>
 
-**Version aliases**
+### Version aliases
 
 You can use shorthand `5.1`, `5.2`, `5.3`, `5.4`, `luajit` version aliases to point to the
 latest (or recent) version of Lua for that version.
